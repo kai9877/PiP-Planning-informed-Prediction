@@ -46,7 +46,7 @@ def model_evaluate():
 
     ## Initialize network
     PiP = pipNet(args)
-    PiP.load_state_dict(torch.load('./trained_models/{}/{}.tar'.format((args.name).split('-')[0], args.name)))
+    PiP.load_state_dict(torch.load('D:/OneDrive - whut.edu.cn/thesis/code/PiP-Planning-informed-Prediction/trained_models/{}/{}.tar'.format((args.name).split('-')[0], args.name)))
     if args.use_cuda:
         PiP = PiP.cuda()
 

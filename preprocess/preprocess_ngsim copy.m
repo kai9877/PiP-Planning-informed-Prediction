@@ -24,6 +24,15 @@ grid is splitted with size 25*5 (8x7 feet for each grid)
 
 lane_filter = false;
 grid_length=25; grid_width=5; cell_length=8; cell_width=7;
+%{
+具体来说，这些代码行定义了解析车辆轨迹数据的空间网格大小。
+grid_length`变量将每个网格单元的长度设置为25英尺，而`grid_width`变量将每个网格单元的宽度设置为5英尺。
+`cell_length`变量将空间网格中每个单元的长度设置为8英尺，而`cell_width`变量将每个单元的宽度设置为7英尺。
+这些超参数用于离散化数据集中的空间信息，使其更容易处理和分析。通过将空间划分为单元格网格，脚本可以提取每个时间步长中每辆车的位置和速度等特征。
+`lane_filter`变量是一个布尔标志，用于确定是否按车道过滤数据。如果设置为`true`，则脚本将仅在数据集中包括来自同一车道的样本。
+这对于训练特定于特定车道或道路的模型非常有用。
+%}
+
 
 % Save location
 if lane_filter
@@ -41,7 +50,7 @@ mkdir(fix_tar_folder);
 
 % Other variable dependent on grid.
 grid_cells = grid_length * grid_width;
-grid_cent_location = ceil(grid_length*grid_width*0.5);   %网格中心位置
+grid_cent_location = ceil(grid_length*grid_width*0.5);
 
 %% Fields in the final result:
 % traj  : (data number)*(13+grid_num)
@@ -82,23 +91,17 @@ grid_cent_location = ceil(grid_length*grid_width*0.5);   %网格中心位置
 
 %% 0.Inputs: Locations of raw_ngsim input files:
 dataset_to_use = 6;
-us101_1 = './datasets/NGSIM_raw/us101-0750am-0805am.txt';
-us101_2 = './datasets/NGSIM_raw/us101-0805am-0820am.txt';
-us101_3 = './datasets/NGSIM_raw/us101-0820am-0835am.txt';
-i80_1 = './datasets/NGSIM_raw/i80-0400-0415.txt';
-i80_2 = './datasets/NGSIM_raw/i80-0500-0515.txt';
-i80_3 = './datasets/NGSIM_raw/i80-0515-0530.txt';
+us101_1 = './dataset/NGSIM_raw/us101-0750am-0805am.txt';
+us101_2 = './raw_ngsim/us101-0805am-0820am.txt';
+us101_3 = './raw_ngsim/us101-0820am-0835am.txt';
+i80_1 = './raw_ngsim/i80-0400-0415.txt';
+i80_2 = './raw_ngsim/i80-0500-0515.txt';
+i80_3 = './raw_ngsim/i80-0515-0530.txt';
 
 
 %% 1.Load data 
 disp('Loading data...')
-% {Add dataset id at the 1st column
-% traj{1} = load(us101_1);：加载名为us101_1的数据集文件，并将其存储在traj的第一个单元格中。每个traj单元格将包含一个数据集文件的数据
-% traj{1} = single([ones(size(traj{1},1),1),traj{1}]);：将数据集ID添加到第一个单元格中的数据。
-% 使用ones(size(traj{1},1),1)创建一个与数据集文件行数相同的数组，并用1填充，表示数据集ID为1。
-% 然后将此数组与数据集文件的内容拼接在一起，结果是一个新的单元格，其中第一列是数据集ID，后面是原始数据集文件的内容。
-% 类似地，对其他数据集文件进行相同的处理，将数据集ID添加到对应的数据样本的第一列，并将处理后的数据存储在traj的不同单元格中}%
-
+% Add dataset id at the 1st column
 traj{1} = load(us101_1);    
 traj{1} = single([ones(size(traj{1},1),1),traj{1}]);
 traj{2} = load(us101_2);
@@ -132,20 +135,13 @@ for k = 1:dataset_to_use
         end
     end
     % Leave space for maneuver labels (2 columns) and grid (grid_cells columns)
-    % 扩展traj单元格数组中第k个数据集的列数，以便后续添加横向和纵向行驶特性（maneuver labels）以及网格信息。%
     traj{k} = [ traj{k}(:,1:6), zeros(size(traj{k},1),2), traj{k}(:,7:11), zeros(size(traj{k},1),grid_cells) ];
 end
 
 % Use the vehilce's center as its location
-%首先计算并调整了每个数据集中车辆的局部Y位置（Local Y），以确保车辆的Y位置大于等于0。对于每个数据集，
-% 通过减去0.5倍车辆长度的方式，将车辆的Y位置调整到车辆中心位置。
-% 然后，计算每个数据集中局部Y位置的最小值，即车辆位置在Y轴的最小偏移量，并将这个偏移量存储在offset中。
-% 如果发现车辆的Y位置存在负值，表示车辆位置在Y轴的负方向上，为了确保车辆的Y位置大于等于0
-% 进一步将所有Y位置的数据都减去相应的偏移值。这样，经过调整后的数据集中的车辆位置都被转换到了非负值的范围，便于后续的数据处理和分析。%
 offset = zeros(1,dataset_to_use);
 for k = 1:dataset_to_use
     traj{k}(:,5) = traj{k}(:,5) - 0.5*traj{k}(:,9);
-    %对于第k个数据集，根据车辆的长度（Length）对局部Y位置进行调整。%
     offset(k) = min(traj{k}(:,5));
     if offset(k) < 0
         % To make the Y location > 0
@@ -183,10 +179,6 @@ parfor ii = 1:dataset_to_use   % Loop on each dataset.
         lane = traj{ii}(k,6);
         
         % Lateral maneuver in Column 7:
-        %利用上边界和下边界的索引，对当前时间点的车道ID进行分析。
-        % 如果在后40帧内车道ID增加或在前40帧内车道ID减少，则认为车辆正在准备转向或在转向后稳定，将横向行驶特性设为3，表示右转（Turn Right）。
-        % 如果在后40帧内车道ID减少或在前40帧内车道ID增加，则认为车辆正在准备转向或在转向后稳定，将横向行驶特性设为2，表示左转（Turn Left）。
-        % 否则，将横向行驶特性设为1，表示保持车道（Keep lane）。%
         ub = min(size(vehtraj,1),ind+40);                                %Upper boundary (+40 frame)
         lb = max(1, ind-40);                                             %Lower boundary (-40 frame)
         if vehtraj(ub,6)>vehtraj(ind,6) || vehtraj(ind,6)>vehtraj(lb,6)  %(prepate to turn or stablize after turn)

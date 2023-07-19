@@ -183,10 +183,7 @@ parfor ii = 1:dataset_to_use   % Loop on each dataset.
         lane = traj{ii}(k,6);
         
         % Lateral maneuver in Column 7:
-        %利用上边界和下边界的索引，对当前时间点的车道ID进行分析。
-        % 如果在后40帧内车道ID增加或在前40帧内车道ID减少，则认为车辆正在准备转向或在转向后稳定，将横向行驶特性设为3，表示右转（Turn Right）。
-        % 如果在后40帧内车道ID减少或在前40帧内车道ID增加，则认为车辆正在准备转向或在转向后稳定，将横向行驶特性设为2，表示左转（Turn Left）。
-        % 否则，将横向行驶特性设为1，表示保持车道（Keep lane）。%
+        利用上边界和下边界的索引，对当前时间点的车道ID进行分析。如果在后40帧内车道ID增加或在前40帧内车道ID减少，则认为车辆正在准备转向或在转向后稳定，将横向行驶特性设为3，表示右转（Turn Right）。如果在后40帧内车道ID减少或在前40帧内车道ID增加，则认为车辆正在准备转向或在转向后稳定，将横向行驶特性设为2，表示左转（Turn Left）。否则，将横向行驶特性设为1，表示保持车道（Keep lane）。%
         ub = min(size(vehtraj,1),ind+40);                                %Upper boundary (+40 frame)
         lb = max(1, ind-40);                                             %Lower boundary (-40 frame)
         if vehtraj(ub,6)>vehtraj(ind,6) || vehtraj(ind,6)>vehtraj(lb,6)  %(prepate to turn or stablize after turn)
